@@ -14,6 +14,7 @@
 #define APP_STATR_ADDRESS       0X08003600
 
 FIRMWARE_WRITE_HANDLE_T firmwareWrite;
+FIRMWARE_INFO_T firmwareInfo;
 COMM_DATA_PACK_T packet;
 /******************************************************************
   * @函数说明：   处理数据包
@@ -30,6 +31,8 @@ void Action_SendAck(uint8_t nCMD,uint8_t nState)
     
     COMM_BuildAndSendPacket(&packet);
 }
+
+
 
 
 /******************************************************************
@@ -52,6 +55,24 @@ void Action_PacketProcess(COMM_DATA_PACK_T *pPacket)
         case COM_CMD_INFO:
         {
             
+            packet.nCMD = COM_CMD_INFO;
+            packet.aData[0] = sizeof(BOOTLOAD_VERSION);
+            memcpy(&packet.aData[1], BOOTLOAD_VERSION, packet.aData[0]);
+            packet.nLength = packet.aData[0] + 1;
+            
+            if (FirmwareMange_ReadFirmwareInfo(&firmwareInfo) == SUCCESS)
+            {
+                packet.aData[packet.nLength++] = firmwareInfo.nLength;
+                memcpy(&packet.aData[packet.nLength], firmwareInfo.aVersion, firmwareInfo.nLength);
+                packet.nLength += firmwareInfo.nLength;
+                packet.aData[packet.nLength++] = 0x00;  //状态正常
+            }
+            else
+            {
+                packet.aData[packet.nLength++] = 0;
+                packet.aData[packet.nLength++] = 0x01;  //状态异常
+            }
+            COMM_BuildAndSendPacket(&packet);
         }
         break;           
         case COM_CMD_ERASURE:
@@ -89,6 +110,10 @@ void Action_PacketProcess(COMM_DATA_PACK_T *pPacket)
             memcpy(&firmwareInfo.nFileCRC, &pPacket->aData[4], 4);    //CRC
 
             memcpy(&firmwareInfo.nOffsetValue, &pPacket->aData[8], 4);    //偏移地址
+            
+            firmwareInfo.nVersionLength = pPacket->aData[12];
+            
+            memcpy(firmwareInfo.aVersion, &pPacket->aData[13], firmwareInfo.nLength);
             
             if (FirmwareMange_WriteFirmwareInfo(&firmwareInfo) == SUCCESS)
             {

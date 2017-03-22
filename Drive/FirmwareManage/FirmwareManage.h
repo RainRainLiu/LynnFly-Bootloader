@@ -5,6 +5,7 @@
 #include <stm32f10x.h>  
 #include "config.h"
 
+#define FIRMWARE_VERSION_MAX_SIZE   100
 #define FIRMWARE_INFO_SIZE          0X400
 #define FIRMWARE_INFO_ADDRESS       STM32_FLASH_BASE + BOOTLOAD_SIZE + BOOTLOAD_INFO_SIZE
 
@@ -13,6 +14,8 @@ typedef struct
     uint32_t nFileCRC;
     uint32_t nLength;
     uint32_t nOffsetValue;
+    uint8_t  nVersionLength;
+    uint8_t  aVersion[FIRMWARE_VERSION_MAX_SIZE];
 }FIRMWARE_INFO_T;
 
 

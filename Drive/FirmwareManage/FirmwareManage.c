@@ -27,6 +27,11 @@ static ErrorStatus checkInfo(FIRMWARE_INFO_T *firmwareInfo)
         return ERROR;
     }
     
+    if (firmwareInfo->nVersionLength > FIRMWARE_VERSION_MAX_SIZE)
+    {
+        return ERROR;
+    }
+    
     return SUCCESS;
 }
 
