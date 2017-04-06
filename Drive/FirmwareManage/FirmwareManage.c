@@ -5,8 +5,8 @@
 
 typedef struct
 {
-    FIRMWARE_INFO_T info;
     uint32_t nCRC;
+    FIRMWARE_INFO_T info;
 }FIRMWARE_INFO_FLASH_T;
 
 
@@ -21,7 +21,7 @@ static ErrorStatus checkInfo(FIRMWARE_INFO_T *firmwareInfo)
 {
     uint32_t totalSize = firmwareInfo->nLength + firmwareInfo->nOffsetValue;
     
-    if (firmwareInfo->nOffsetValue < (FIRMWARE_INFO_ADDRESS + 0x400) 
+    if (firmwareInfo->nOffsetValue < (BOOTLOAD_SIZE + BOOTLOAD_INFO_SIZE + FIRMWARE_INFO_SIZE) 
             || totalSize > (STM32_FLASH_SIZE * 1024))       //´óÐ¡³¬³ö·¶Î§
     {
         return ERROR;
@@ -120,7 +120,7 @@ ErrorStatus FirmwareMange_WriteFirmwareInfo(FIRMWARE_INFO_T *firmwareInfo)
     STMFLASH_EraseAll(FIRMWARE_INFO_ADDRESS, 1);        //²Á³ý
     
     
-    STMFLASH_Write_NoCheck(FIRMWARE_INFO_ADDRESS, (uint16_t *)firmwareInfo, length / 2);
+    STMFLASH_Write_NoCheck(FIRMWARE_INFO_ADDRESS, (uint16_t *)&infoFlah, length / 2);
     
     return SUCCESS;
 }

@@ -62,9 +62,9 @@ void Action_PacketProcess(COMM_DATA_PACK_T *pPacket)
             
             if (FirmwareMange_ReadFirmwareInfo(&firmwareInfo) == SUCCESS)
             {
-                packet.aData[packet.nLength++] = firmwareInfo.nLength;
-                memcpy(&packet.aData[packet.nLength], firmwareInfo.aVersion, firmwareInfo.nLength);
-                packet.nLength += firmwareInfo.nLength;
+                packet.aData[packet.nLength++] = firmwareInfo.nVersionLength;
+                memcpy(&packet.aData[packet.nLength], firmwareInfo.aVersion, firmwareInfo.nVersionLength);
+                packet.nLength += firmwareInfo.nVersionLength;
                 packet.aData[packet.nLength++] = 0x00;  //状态正常
             }
             else
@@ -77,22 +77,39 @@ void Action_PacketProcess(COMM_DATA_PACK_T *pPacket)
         break;           
         case COM_CMD_ERASURE:
         {
+            uint8_t result = 0;
             uint32_t size, page;
             
             memcpy(&size, pPacket->aData, 4);
             
-            page = size / STM_SECTOR_SIZE;
-            
-            if (size % STM_SECTOR_SIZE)
+            if (size == 0)
             {
-                page += 1;
+                if (FirmwareMange_ReadFirmwareInfo(&firmwareInfo) == SUCCESS)
+                {
+                    size = firmwareInfo.nLength;
+                    result = 0;
+                }
+                else
+                {
+                    result = 1;
+                }
             }
 
-            Action_SendAck(COM_CMD_ERASURE, 0x01);
+            Action_SendAck(COM_CMD_ERASURE, result);
             
-            STMFLASH_EraseAll(APP_STATR_ADDRESS, page);
+            if (result == 0)
+            {
+                page = size / STM_SECTOR_SIZE;
             
-            Action_SendAck(COM_CMD_ERASURE_REPORT, 0x01);   //上报擦除完成
+                if (size % STM_SECTOR_SIZE)
+                {
+                    page += 1;
+                }
+                
+                STMFLASH_EraseAll(APP_STATR_ADDRESS, page);
+            
+                Action_SendAck(COM_CMD_ERASURE_REPORT, 0x01);   //上报擦除完成
+            }
         }
         break;        
         case COM_CMD_ERASURE_REPORT:
@@ -103,8 +120,6 @@ void Action_PacketProcess(COMM_DATA_PACK_T *pPacket)
         
         case COM_CMD_DOWNLOAD_INFO:
         {
-            FIRMWARE_INFO_T firmwareInfo;
-            
             memcpy(&firmwareInfo.nLength, pPacket->aData, 4);    //长度
 
             memcpy(&firmwareInfo.nFileCRC, &pPacket->aData[4], 4);    //CRC
@@ -113,15 +128,15 @@ void Action_PacketProcess(COMM_DATA_PACK_T *pPacket)
             
             firmwareInfo.nVersionLength = pPacket->aData[12];
             
-            memcpy(firmwareInfo.aVersion, &pPacket->aData[13], firmwareInfo.nLength);
+            memcpy(firmwareInfo.aVersion, &pPacket->aData[13], firmwareInfo.nVersionLength);
             
             if (FirmwareMange_WriteFirmwareInfo(&firmwareInfo) == SUCCESS)
             {
-                Action_SendAck(COM_CMD_DOWNLOAD_INFO, 0x01);
+                Action_SendAck(COM_CMD_DOWNLOAD_INFO, 0x00);
             }
             else
             {
-                Action_SendAck(COM_CMD_DOWNLOAD_INFO, 0x00);
+                Action_SendAck(COM_CMD_DOWNLOAD_INFO, 0x01);
             }
         }
         break;
@@ -137,20 +152,17 @@ void Action_PacketProcess(COMM_DATA_PACK_T *pPacket)
             
             if (FirmwareMange_WriteFirmware(&firmwareWrite, packID, &pPacket->aData[8], pPacket->nLength - 8) == SUCCESS)
             {
-                Action_SendAck(COM_CMD_DOWNLOAD_DATA, 0x01);
+                Action_SendAck(COM_CMD_DOWNLOAD_DATA, 0x00);
             }
             else
             {
-                Action_SendAck(COM_CMD_DOWNLOAD_DATA, 0x00);
+                Action_SendAck(COM_CMD_DOWNLOAD_DATA, 0x01);
             }
         }
         break;
         
         case COM_CMD_RUN_APP:
         {
-            FIRMWARE_INFO_T firmwareInfo;
-            
-            
             if (FirmwareMange_ReadFirmwareInfo(&firmwareInfo) == SUCCESS)
             {
                 if (FirmwareMange_Check(&firmwareInfo) == SUCCESS)

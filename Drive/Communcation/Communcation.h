@@ -2,7 +2,7 @@
 #define _COMMUN_
 #include "usart.h"	
 
-#define COMM_MAX_PACK_DATA_LENGTH   1028    
+#define COMM_MAX_PACK_DATA_LENGTH   1200    
 
 
 typedef enum{

@@ -1,7 +1,7 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H	  
 
-#define BOOTLOAD_VERSION        "1.0.0.20173101611"
+#define BOOTLOAD_VERSION        "1.0.0.0"
 
 
 
