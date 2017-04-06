@@ -62,10 +62,19 @@ void Action_PacketProcess(COMM_DATA_PACK_T *pPacket)
             
             if (FirmwareMange_ReadFirmwareInfo(&firmwareInfo) == SUCCESS)
             {
-                packet.aData[packet.nLength++] = firmwareInfo.nVersionLength;
-                memcpy(&packet.aData[packet.nLength], firmwareInfo.aVersion, firmwareInfo.nVersionLength);
-                packet.nLength += firmwareInfo.nVersionLength;
-                packet.aData[packet.nLength++] = 0x00;  //状态正常
+                if (FirmwareMange_Check(&firmwareInfo) == SUCCESS)
+                {
+                    packet.aData[packet.nLength++] = firmwareInfo.nVersionLength;
+                    memcpy(&packet.aData[packet.nLength], firmwareInfo.aVersion, firmwareInfo.nVersionLength);
+                    packet.nLength += firmwareInfo.nVersionLength;
+                    packet.aData[packet.nLength++] = 0x00;  //状态正常
+                }
+                else
+                {
+                    packet.aData[packet.nLength++] = 0;
+                    packet.aData[packet.nLength++] = 0x01;  //状态异常
+                }
+                
             }
             else
             {
@@ -133,6 +142,7 @@ void Action_PacketProcess(COMM_DATA_PACK_T *pPacket)
             if (FirmwareMange_WriteFirmwareInfo(&firmwareInfo) == SUCCESS)
             {
                 Action_SendAck(COM_CMD_DOWNLOAD_INFO, 0x00);
+                firmwareWrite.pFirmwareInfo = & firmwareInfo;
             }
             else
             {

@@ -55,7 +55,10 @@ ErrorStatus FirmwareMange_Check(FIRMWARE_INFO_T *firmwareInfo)
     
     uint8_t *firmware = (uint8_t *)address;
     
-    if (firmwareInfo->nFileCRC == CRC32(firmware, firmwareInfo->nLength))
+    volatile static uint32_t crc;
+    crc = CRC32(firmware, firmwareInfo->nLength);
+    
+    if (firmwareInfo->nFileCRC == crc)
     {
         return SUCCESS;
     }
