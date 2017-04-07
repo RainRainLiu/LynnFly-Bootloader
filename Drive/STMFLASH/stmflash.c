@@ -35,6 +35,8 @@ typedef enum                //Flash status
     Flash_TimeOut           = 4
 }enum_FlashStatus;
 
+
+
 /******************************************************************
   * @函数名称：   void STMFLASH_Unlock(void)
   * @函数说明：   Flash unlock
@@ -201,11 +203,14 @@ u16 STMFLASH_ReadHalfWord(u32 faddr)
 void STMFLASH_Write_NoCheck(u32 WriteAddr,u16 *pBuffer,u16 NumToWrite)   
 { 			 		 
 	u16 i;
+    
+    STMFLASH_Unlock();
 	for(i=0;i<NumToWrite;i++)
 	{
 		STMFLASH_WriteHalfWord(WriteAddr,pBuffer[i]);
 	    WriteAddr+=2;//地址增加2.
 	}  
+    STMFLASH_Lock();
 } 
 
 
@@ -259,6 +264,7 @@ ErrorStatus STMFLASH_EraseAll(uint32_t padd, uint32_t size)
             return ERROR;
         }
     }
+    STMFLASH_Lock();
     
     return SUCCESS;
     

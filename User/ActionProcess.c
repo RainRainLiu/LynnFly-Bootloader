@@ -13,9 +13,19 @@
 
 #define APP_STATR_ADDRESS       0X08003600
 
+typedef enum
+{
+    ACK_SUCESS = 0,
+    ACK_ERROR = 1,
+    
+}COM_ACK_RESULT_T;
+
+
 FIRMWARE_WRITE_HANDLE_T firmwareWrite;
 FIRMWARE_INFO_T firmwareInfo;
 COMM_DATA_PACK_T packet;
+uint32_t waiteTime;
+uint8_t runFlag = 0;
 /******************************************************************
   * @函数说明：   处理数据包
   * @输入参数：   COMM_DATA_PACK_T *pPacket 接收的数据包
@@ -33,6 +43,33 @@ void Action_SendAck(uint8_t nCMD,uint8_t nState)
 }
 
 
+void Action_AutoRun(void)
+{
+    if (runFlag == 0)
+    {
+        if (FirmwareMange_ReadFirmwareInfo(&firmwareInfo) == SUCCESS)
+        {
+            if (FirmwareMange_Check(&firmwareInfo) == SUCCESS)
+            {
+                runFlag = 1;
+                waiteTime = 0xfffff;
+                return;
+            }
+        }
+        runFlag = 2; //不自动运行
+    }
+    else if (runFlag == 1)
+    {
+        waiteTime--;
+        if (waiteTime == 0)
+        {
+             FirmwareMange_RunFirmware(firmwareInfo.nOffsetValue);
+        }
+    }
+}
+
+
+
 
 
 /******************************************************************
@@ -45,11 +82,12 @@ void Action_SendAck(uint8_t nCMD,uint8_t nState)
 
 void Action_PacketProcess(COMM_DATA_PACK_T *pPacket)
 {
+    runFlag = 2;
     switch(pPacket->nCMD)
     {
         case COM_CMD_HEARBEAT:
         {
-            Action_SendAck(COM_CMD_HEARBEAT, 0x01);
+            Action_SendAck(COM_CMD_HEARBEAT, ACK_SUCESS);
         }
         break;
         case COM_CMD_INFO:
@@ -67,19 +105,19 @@ void Action_PacketProcess(COMM_DATA_PACK_T *pPacket)
                     packet.aData[packet.nLength++] = firmwareInfo.nVersionLength;
                     memcpy(&packet.aData[packet.nLength], firmwareInfo.aVersion, firmwareInfo.nVersionLength);
                     packet.nLength += firmwareInfo.nVersionLength;
-                    packet.aData[packet.nLength++] = 0x00;  //状态正常
+                    packet.aData[packet.nLength++] = ACK_SUCESS;  //状态正常
                 }
                 else
                 {
                     packet.aData[packet.nLength++] = 0;
-                    packet.aData[packet.nLength++] = 0x01;  //状态异常
+                    packet.aData[packet.nLength++] = ACK_ERROR;  //状态异常
                 }
                 
             }
             else
             {
                 packet.aData[packet.nLength++] = 0;
-                packet.aData[packet.nLength++] = 0x01;  //状态异常
+                packet.aData[packet.nLength++] = ACK_ERROR;  //状态异常
             }
             COMM_BuildAndSendPacket(&packet);
         }
@@ -88,6 +126,7 @@ void Action_PacketProcess(COMM_DATA_PACK_T *pPacket)
         {
             uint8_t result = 0;
             uint32_t size, page;
+            uint32_t address;
             
             memcpy(&size, pPacket->aData, 4);
             
@@ -95,18 +134,29 @@ void Action_PacketProcess(COMM_DATA_PACK_T *pPacket)
             {
                 if (FirmwareMange_ReadFirmwareInfo(&firmwareInfo) == SUCCESS)
                 {
+                    address = FLASH_BASE + firmwareInfo.nOffsetValue;
                     size = firmwareInfo.nLength;
-                    result = 0;
+                    result = ACK_SUCESS;
                 }
                 else
                 {
-                    result = 1;
+                    result = ACK_ERROR;
                 }
             }
-
-            Action_SendAck(COM_CMD_ERASURE, result);
+            else
+            {
+                memcpy(&address, pPacket->aData, 4);
+                address += FLASH_BASE;
+            }
             
-            if (result == 0)
+            if (address >= (FIRMWARE_INFO_ADDRESS + 400))
+            {
+                result = ACK_SUCESS;
+            }
+
+            Action_SendAck(COM_CMD_ERASURE, ACK_SUCESS);
+            
+            if (result == ACK_SUCESS)
             {
                 page = size / STM_SECTOR_SIZE;
             
@@ -115,9 +165,14 @@ void Action_PacketProcess(COMM_DATA_PACK_T *pPacket)
                     page += 1;
                 }
                 
-                STMFLASH_EraseAll(APP_STATR_ADDRESS, page);
-            
-                Action_SendAck(COM_CMD_ERASURE_REPORT, 0x01);   //上报擦除完成
+                if (STMFLASH_EraseAll(address, page) == SUCCESS)
+                {
+                    Action_SendAck(COM_CMD_ERASURE_REPORT, ACK_SUCESS);   //上报擦除完成
+                }
+                else
+                {
+                    Action_SendAck(COM_CMD_ERASURE_REPORT, ACK_ERROR);   //上报擦除完成
+                }
             }
         }
         break;        
@@ -141,12 +196,12 @@ void Action_PacketProcess(COMM_DATA_PACK_T *pPacket)
             
             if (FirmwareMange_WriteFirmwareInfo(&firmwareInfo) == SUCCESS)
             {
-                Action_SendAck(COM_CMD_DOWNLOAD_INFO, 0x00);
+                Action_SendAck(COM_CMD_DOWNLOAD_INFO, ACK_SUCESS);
                 firmwareWrite.pFirmwareInfo = & firmwareInfo;
             }
             else
             {
-                Action_SendAck(COM_CMD_DOWNLOAD_INFO, 0x01);
+                Action_SendAck(COM_CMD_DOWNLOAD_INFO, ACK_ERROR);
             }
         }
         break;
@@ -162,11 +217,11 @@ void Action_PacketProcess(COMM_DATA_PACK_T *pPacket)
             
             if (FirmwareMange_WriteFirmware(&firmwareWrite, packID, &pPacket->aData[8], pPacket->nLength - 8) == SUCCESS)
             {
-                Action_SendAck(COM_CMD_DOWNLOAD_DATA, 0x00);
+                Action_SendAck(COM_CMD_DOWNLOAD_DATA, ACK_SUCESS);
             }
             else
             {
-                Action_SendAck(COM_CMD_DOWNLOAD_DATA, 0x01);
+                Action_SendAck(COM_CMD_DOWNLOAD_DATA, ACK_ERROR);
             }
         }
         break;
@@ -177,11 +232,11 @@ void Action_PacketProcess(COMM_DATA_PACK_T *pPacket)
             {
                 if (FirmwareMange_Check(&firmwareInfo) == SUCCESS)
                 {
-                    Action_SendAck(COM_CMD_RUN_APP, 0x01);
+                    Action_SendAck(COM_CMD_RUN_APP, ACK_SUCESS);
                     FirmwareMange_RunFirmware(firmwareInfo.nOffsetValue);
                 }
             }
-            Action_SendAck(COM_CMD_RUN_APP, 0x00);
+            Action_SendAck(COM_CMD_RUN_APP, ACK_ERROR);
             
         }
         break;

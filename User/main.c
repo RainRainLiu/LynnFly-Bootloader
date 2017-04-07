@@ -12,11 +12,13 @@ int main(void)
     
     while(1)
     {
+        Action_AutoRun();
         if(comParsing.receiveState == RX_CarryOut)
         {
             Action_PacketProcess(&comParsing.dataPack);
             comParsing.receiveState = RX_Free;
         }
+
     }
 }
 

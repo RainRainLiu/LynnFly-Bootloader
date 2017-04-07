@@ -5,7 +5,7 @@
 
 void Action_PacketProcess(COMM_DATA_PACK_T *pPacket);
 
-
+void Action_AutoRun(void);
 
 #endif
 
