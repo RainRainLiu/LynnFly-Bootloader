@@ -145,7 +145,7 @@ void Action_PacketProcess(COMM_DATA_PACK_T *pPacket)
             }
             else
             {
-                memcpy(&address, pPacket->aData, 4);
+                memcpy(&address, &pPacket->aData[4], 4);
                 address += FLASH_BASE;
             }
             
