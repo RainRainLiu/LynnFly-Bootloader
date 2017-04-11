@@ -38,6 +38,7 @@
 #include "gpio.h"
 
 /* USER CODE BEGIN Includes */
+#include "ActionProcess.h"
 
 /* USER CODE END Includes */
 
@@ -82,6 +83,7 @@ int main(void)
   MX_SPI2_Init();
 
   /* USER CODE BEGIN 2 */
+    Action_Init();
 
   /* USER CODE END 2 */
 
@@ -89,6 +91,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+      Action_Process();
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */

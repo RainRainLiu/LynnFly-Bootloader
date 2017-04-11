@@ -68,6 +68,7 @@ typedef void (*HAL_UART_ReceiveProcessCB)(uint8_t nData);
 #endif
 
 ErrorStatus UartPrintf(char *fmt, ...);
+ErrorStatus HAL_UART_SetReceiveCB(HAL_UART_ReceiveProcessCB cb);
 
 /* USER CODE END Prototypes */
 
